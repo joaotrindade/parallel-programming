@@ -84,7 +84,7 @@ public class Main {
 		for(int i = 0 ; i < lin ; i++) {
 			for(int k = 0 ; k < col ; k++) {
 				for (int j = 0 ; j < lin; j++) {
-					matrix_C[i][j] += matrix_C[i][j] + matrix_A[i][k] * matrix_B[k][j];
+					matrix_C[i][j] = matrix_C[i][j] + matrix_A[i][k] * matrix_B[k][j];
 				}
 			}
 		}
