@@ -354,7 +354,7 @@ void OnMultParallel(int m_ar, int m_br, int nt) {
 
 		GetLocalTime(&Time1);
 
-		#pragma omp parallel for num_threads(n_thread) private(i,j)
+		#pragma omp parallel for num_threads(n_thread) private(j,k)
 		for (i = 0; i < m_ar; i++)
 		{
 			for (j = 0; j < m_br; j++)
@@ -446,7 +446,7 @@ void OnMultOptimizedParallel(int m_ar, int m_br, int nt)
 
 		GetLocalTime(&Time1);
 
-		#pragma omp parallel for num_threads(n_thread) private(i,k)
+		#pragma omp parallel for num_threads(n_thread) private(k,j)
 		for (i = 0; i<m_ar; i++)
 		{
 			for (k = 0; k<m_br; k++)
