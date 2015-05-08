@@ -1,3 +1,0 @@
-C:\CPAR\Fortran\mulmatrix.F95(4) : warning 242 - Variable MATRIX_C has been given a value but never used
-C:\CPAR\Fortran\mulmatrix.F95(70) : warning 242 - Variable MATRIX_C has been given a value but never used
-Creating executable: C:\CPAR\Fortran\mulmatrix.EXE
