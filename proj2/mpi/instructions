@@ -1,0 +1,3 @@
+mpiCC.openmpi -o prog crivo.cpp
+
+mpirun --hostfile hostfile -np 4 prog
