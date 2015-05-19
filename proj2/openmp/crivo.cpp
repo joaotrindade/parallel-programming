@@ -13,28 +13,28 @@ using namespace std;
 
 bool* isprime ;
 
-void computeChunk(unsigned long seeds[], int number_seeds, int startIndex, int endIndex, int CHUNKSIZE)
+void computeChunk(unsigned long seeds[], int number_seeds, unsigned long startIndex, unsigned long endIndex, unsigned long CHUNKSIZE)
 {
-	int maxLookupIndex = ceil(sqrt(endIndex)) + startIndex ;
+	unsigned long maxLookupIndex = ceil(sqrt(endIndex)) + startIndex ;
 	//cout << " computeChunk start: " << startIndex << " maxLookupIndex: " << maxLookupIndex << " chunk end: " << endIndex <<  endl; 
 	bool foundFirst ; 
 	
-	for(int l = 0 ; l < number_seeds ; l++ )
+	for(unsigned long l = 0 ; l < number_seeds ; l++ )
 	{
-		int temp_seed = seeds[l];
+		unsigned long temp_seed = seeds[l];
 		if (temp_seed  > maxLookupIndex ) break ; 
 		foundFirst = false;
-		for(int i = startIndex ; i <= maxLookupIndex; i++)
+		for(unsigned long i = startIndex ; i <= maxLookupIndex; i++)
 		{
 			if (foundFirst) break; 
 			if (i % temp_seed == 0) // encontrou um para marcar
 			{
-				//cout << "a semenete : " << temp_seed << " marcou o numero" << i << endl;
+				//cout << "a semente : " << temp_seed << " marcou o numero" << i << endl;
 				isprime[i] = false; 
 				foundFirst = true;
-				for(int j = i ; j <= endIndex; j+= temp_seed)
+				for(unsigned long j = i ; j <= endIndex; j+= temp_seed)
 				{
-					//cout << "---- a semenete : " << temp_seed << " marcou o numero" << j << endl;
+					//cout << "---- a semente : " << temp_seed << " marcou o numero" << j << endl;
 					isprime[j] = false;
 				}
 			}
@@ -53,14 +53,17 @@ int main()
 	unsigned long n;
 	unsigned long i;
 	struct timespec begin, current;
-	long long start, elapsed, microseconds;
+	unsigned long start, elapsed, microseconds;
 	
 	unsigned long pCount = 0;
 	unsigned long* seeds;
-	int CHUNKSIZE = 0;
-	int NUM_THREADS = 4;
+	unsigned long CHUNKSIZE = 0;
+	int NUM_THREADS;
 	int number_seeds  = 0; 
 	ofstream outputFile;
+	
+	cout<<"Numero de cores:"<<endl;
+	cin>>NUM_THREADS;
 	
 	cout<<"Digite o numero:"<<endl;
 	cin>>n;
@@ -68,7 +71,7 @@ int main()
 	isprime = new bool[n];
 	seeds = new unsigned long[(int)sqrt(n) + 5] ;
 	CHUNKSIZE = ceil( ( (n - (int)sqrt(n) ) / NUM_THREADS) + 1 );
-	cout << "chunksize : " << CHUNKSIZE << endl;
+	//cout << "chunksize : " << CHUNKSIZE << endl;
 	memset(isprime, true, n);
 	isprime[0] = isprime[1] = false;
 	
@@ -80,7 +83,7 @@ int main()
 		if(isprime[i])
 		{
 
-			for(int j = i*i ; j <= sqrt(n); j+=i)
+			for(unsigned long j = i*i ; j <= sqrt(n); j+=i)
 			{
 				isprime[j] = false;
 			}
@@ -89,15 +92,15 @@ int main()
 	}
 	
 	//cout << "seeds: ";
-	for (int i = 2 ; i < sqrt(n) ; i++)
+	for (unsigned long i = 2 ; i < sqrt(n) ; i++)
 	if (isprime[i] == true) { seeds[number_seeds++] = i ; /*cout << i << " ";*/}
 	cout << endl;
 	
 	number_seeds = number_seeds ;
 	//cout << "got " << number_seeds << " seeds" << endl;
 
-	int* nextStartIndex = new int[NUM_THREADS + 1 ];
-	int* nextEndIndex = new int[NUM_THREADS + 1]; 
+	unsigned long* nextStartIndex = new unsigned long[NUM_THREADS + 1 ];
+	unsigned long* nextEndIndex = new unsigned long[NUM_THREADS + 1]; 
 	
 	nextStartIndex[1]  = ceil(sqrt(n));
 	nextEndIndex[1] = nextStartIndex[1] + CHUNKSIZE ;
@@ -116,7 +119,7 @@ int main()
 		{
 			for(int i = 1; i<=NUM_THREADS; i++)
 			{
-				//#pragma omp task
+				#pragma omp task
 				computeChunk(seeds, number_seeds, nextStartIndex[i], nextEndIndex[i], CHUNKSIZE);
 			}
 			
@@ -131,14 +134,16 @@ int main()
 	
 	cout << "WRITING TO FILE - IT MIGHT TAKE A WHILE" << endl; 
 	outputFile.open ("primes.txt");
-	for(i = 2; i < n; i++)
+	
+	for(unsigned long i = 2; i < n; i++)
 	{
 		if(isprime[i])
 		{
 			pCount++;
 			//cout << i << " "; 
-			outputFile << (i) << endl;
+			//outputFile << (i) << endl;
 		}
 		
 	}
+	cout<<pCount<<endl;
 }

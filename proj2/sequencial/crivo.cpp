@@ -11,12 +11,12 @@ using namespace std;
 
 int main()
 {
-    unsigned long n;
-    unsigned long i;
+    unsigned  long n;
+    unsigned  long i;
     struct timespec begin, current;
     long long start, elapsed, microseconds;
     bool* isprime ;
-    unsigned long pCount = 0;
+    unsigned  long pCount = 0;
     ofstream outputFile;
     
     cout<<"Digite o numero:"<<endl;
@@ -41,7 +41,7 @@ int main()
 	if(isprime[i])
 	{
 
-	  for(int j = i*i ; j < n; j+=i)
+	  for(unsigned long j = i*i ; j < n; j+=i)
 	  {
 	    isprime[j] = false;
 	  }
@@ -60,9 +60,10 @@ int main()
       if(isprime[i])
       {
 	pCount++;
-	outputFile << (i) << endl;
+	//outputFile << (i) << endl;
       }
       
     }
+	cout<<pCount<<endl; 
     cout<<endl;
 }

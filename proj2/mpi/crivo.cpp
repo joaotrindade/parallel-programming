@@ -31,7 +31,7 @@ void computeChunk(bool primeList[], unsigned long seeds[], int number_seeds, int
 			if ((i + startIndex)  % temp_seed == 0) // encontrou um para marcar
 			{
 				//cout << "a semenete : " << temp_seed << " marcou o numero" << i + startIndex<< endl;
-				primeList[i] = false; 
+				primeList[i] = false;
 				foundFirst = true;
 				for(int j = i ; j <= endIndex - startIndex; j+= temp_seed)
 				{
@@ -40,7 +40,7 @@ void computeChunk(bool primeList[], unsigned long seeds[], int number_seeds, int
 				}
 			}
 		}
-	} 
+	}
 }
 
 
@@ -50,10 +50,11 @@ int main(int argc, char **argv)
 	unsigned long i;
 	struct timespec begin, current;
 	long long start, elapsed, microseconds;
-	
+	bool* primeList; 
 	unsigned long pCount = 0;
 	unsigned long* seeds;
 	int CHUNKSIZE = 0;
+	int r_CHUNKSIZE = 0 ;
 	int RANK = 0 ;
 	int NUM_THREADS = 4;
 	int number_seeds  = 0; 
@@ -69,6 +70,8 @@ int main(int argc, char **argv)
 	
 	if (RANK == 0)
 	{
+		int numberOfPrimes = 0 ; 
+		MPI_Status status;
 		CHUNKSIZE = 23;
 		cout<<"Digite o numero:"<<endl;
 		cin>>n;
@@ -76,10 +79,9 @@ int main(int argc, char **argv)
 		
 		
 		cout << "after mpi init" << NUM_THREADS << endl; 
-		
 		isprime = new bool[n];
 		seeds = new unsigned long[(int)sqrt(n) + 5] ;
-		CHUNKSIZE = ceil( ( (n - (int)sqrt(n) ) / NUM_THREADS) + 1 );
+		CHUNKSIZE = ceil( ( (n - (int)sqrt(n) ) / (NUM_THREADS)) + 1 );
 		cout << "chunksize : " << CHUNKSIZE << endl;
 		memset(isprime, true, n);
 		isprime[0] = isprime[1] = false;
@@ -111,22 +113,28 @@ int main(int argc, char **argv)
 		int* nextStartIndex = new int[NUM_THREADS + 1 ];
 		int* nextEndIndex = new int[NUM_THREADS + 1]; 
 		
-		nextStartIndex[1]  = ceil(sqrt(n));
-		nextEndIndex[1] = nextStartIndex[1] + CHUNKSIZE ;
+		nextStartIndex[0]  = ceil(sqrt(n));
+		nextEndIndex[0] = nextStartIndex[0] + CHUNKSIZE ;
 		//cout << "i: 1" << " start : " << nextStartIndex[1] << " -  end: " << nextEndIndex[1] << endl;
-		for(int i = 2; i<=NUM_THREADS; i++)
+		for(int i = 1; i<NUM_THREADS ; i++)
 		{
-			nextStartIndex[i] = nextEndIndex[i - 1];
+			nextStartIndex[i] = nextEndIndex[i - 1] + 1;
 			nextEndIndex[i] = nextStartIndex[i] + CHUNKSIZE ;
 			//cout << "i: " << i << " start : " << nextStartIndex[i] << " -  end: " << nextEndIndex[i] << endl;
 		}
 		
+		if (nextEndIndex[NUM_THREADS-1] > n) nextEndIndex[NUM_THREADS-1] = n ;
+		
+		for(int i = 0;i < NUM_THREADS ; i++)
+		    cout << " start : " << nextStartIndex[i] << " -  end: " << nextEndIndex[i] << endl;
 		
 		
 		
 		
 		
-		for(int i = 1; i < NUM_THREADS; i++)
+		//TODO: PASSAR SEEDS PARA CALCULO SEQUENCIAL
+		//TODO: RESPOSTA SO de N
+		for(int i = 1; i < NUM_THREADS  ; i++)
 		{
 			//#pragma omp task
 			//computeChunk(seeds, number_seeds, nextStartIndex[i], nextEndIndex[i], CHUNKSIZE);
@@ -145,17 +153,28 @@ int main(int argc, char **argv)
 			// SEND endIndex - ID: 4
 			MPI_Send(&nextEndIndex[i],1,MPI_INT,i,4,MPI_COMM_WORLD);
 			
+			// SEND endIndex - ID: 4
+			MPI_Send(&CHUNKSIZE,1,MPI_INT,i,5,MPI_COMM_WORLD);
+			
 		}
 		
-		// FAZ GATHER QUE ENVIA CHUNKSIZE = PARA TODOS e RECEBE RESPOSTAS
-		// SEND CHUNKSIZE - ID: 5 
-		//MPI_Send(&CHUNKSIZE,1,MPI_INT,1,5,MPI_COMM_WORLD);
-		MPI_Gather(&CHUNKSIZE, 1, MPI_INT, isprime, CHUNKSIZE, MPI_C_BOOL, 0, MPI_COMM_WORLD);
-		
-		for(int i = 0 ; i < n ; i++)
+		computeChunk(isprime,seeds,number_seeds,nextStartIndex[0],nextEndIndex[0],CHUNKSIZE);
+		for(int k = 0 ; k <= nextEndIndex[0] ; k++)
 		{
-			if (isprime[i]) cout << i << endl; 
+		    if (isprime[k]){
+		      numberOfPrimes++;
+		      cout <<  "PROCESSO: " <<  RANK << " PRIMO: " << k << endl ;
+		    }
 		}
+		
+		for(int i = 1 ; i < NUM_THREADS ; i++)
+		{
+			int tempNumber = 0 ;
+			//int mainIndex = nextEndIndex[i] ; 
+			MPI_Recv(&tempNumber,1,MPI_INT,-1,6,MPI_COMM_WORLD, &status);
+			numberOfPrimes += tempNumber ; 
+		}
+		
 
 		
 		// ESPERA TODA A GENTE
@@ -163,9 +182,10 @@ int main(int argc, char **argv)
 		if (clock_gettime(USED_CLOCK, &current)) exit(EXIT_FAILURE);
 		elapsed = current.tv_sec*NANOS + current.tv_nsec - start;
 		microseconds = elapsed / 1000 + (elapsed % 1000 >= 500);
+		cout << "Primes found: " << numberOfPrimes << endl;
 		cout << "Elapsed time: " << microseconds << " microseconds (" << microseconds * 0.000001 << " s). " << endl;
 		
-		cout << "WRITING TO FILE - IT MIGHT TAKE A WHILE" << endl; 
+		/*cout << "WRITING TO FILE - IT MIGHT TAKE A WHILE" << endl; 
 		outputFile.open ("primes.txt");
 		for(int i = 2; i < n; i++)
 		{
@@ -176,7 +196,9 @@ int main(int argc, char **argv)
 				outputFile << (i) << endl;
 			}
 			
-		}
+		}*/
+		
+		
 	}
 	else
 	{
@@ -184,51 +206,55 @@ int main(int argc, char **argv)
 		
 		int retorno;
 		string temp = ""; 
-		int r_number_seeds, r_startIndex, r_endIndex, r_CHUNKSIZE;
+		int r_number_seeds, r_startIndex, r_endIndex;
 		
 		MPI_Status status; 
 		
 		MPI_Recv(&r_number_seeds,1,MPI_INT,0,1,MPI_COMM_WORLD, &status);
-		cout << "r_number_seeds: " << r_number_seeds << endl;
+		//cout << "r_number_seeds: " << r_number_seeds << endl;
 		
 		unsigned long* r_seeds =  new unsigned long[r_number_seeds] ;
 		MPI_Recv(r_seeds,r_number_seeds,MPI_UNSIGNED_LONG,0,2,MPI_COMM_WORLD, &status);
 		
 		MPI_Recv(&r_startIndex,1,MPI_INT,0,3,MPI_COMM_WORLD, &status);
-		cout << "r_startIndex: " << r_startIndex << endl;
+		//cout << "RANK: " << RANK <<  "  r_startIndex: " << r_startIndex << endl;
 		MPI_Recv(&r_endIndex,1,MPI_INT,0,4,MPI_COMM_WORLD, &status);
-		cout << "r_endIndex: " << r_endIndex << endl;
+		cout << "RANK: " << RANK <<  "  r_startIndex: " << r_startIndex <<  "  r_endIndex: " << r_endIndex << endl;
+		
 		MPI_Recv(&r_CHUNKSIZE,1,MPI_INT,0,5,MPI_COMM_WORLD, &status);
+		//cout << " ----> r_CHUNKSIZE: " << r_CHUNKSIZE << endl;
 		
-		
-		
-		
-		cout << " ----> r_CHUNKSIZE: " << r_CHUNKSIZE << endl;
-		cout << "r_seeds" << endl; 
-		for(int i = 0 ; i < r_number_seeds ; i++)
-		{
+		//cout << "r_seeds" << endl; 
+		//for(int i = 0 ; i < r_number_seeds ; i++)
+		/*{
 			cout << r_seeds[i] << endl; 
-		}
+		}*/
 		
-		
+		//MPI_Recv(&r_CHUNKSIZE,1,MPI_INT,0,5,MPI_COMM_WORLD, &status);
 		
 		
 		// COMPUTAR 
 		
-		bool* primeList = new bool[r_CHUNKSIZE];
+		primeList = new bool[r_CHUNKSIZE];
 		memset(primeList, true, r_CHUNKSIZE);
+		//cout <<  "PROCESSO: " <<  RANK <<  " - Finish compute chunk !" <<  endl;
 		computeChunk(primeList,r_seeds,r_number_seeds,r_startIndex,r_endIndex,r_CHUNKSIZE);
-		
-		
+		string toPrint = ""; 
+		int count = 0 ; 
+		for(int k = 0 ; k < r_CHUNKSIZE ; k++)
+		{
+		    if (primeList[k])
+		    {
+			count++;
+			cout <<  "PROCESSO: " <<  RANK << " PRIMO: " << k + r_startIndex << endl ;
+		    }
+		    if(k + r_startIndex > r_endIndex) break; 
+		}
 		// SEND SOLUTION - ID: 6
-		MPI_Send(primeList,r_CHUNKSIZE,MPI_C_BOOL,0,6,MPI_COMM_WORLD);
-		
-		
-		
-		
-		
-	}
+		MPI_Send(&count,1,MPI_INT,0,6,MPI_COMM_WORLD);
+		cout <<  "PROCESSO: " <<  RANK <<  " - Finish SEND !" << endl;
 	
+	}
 	
 	MPI_Finalize();
 }
