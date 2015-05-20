@@ -13,7 +13,7 @@ using namespace std;
 #define NANOS 1000000000LL
 
 
-int computeSeeds(unsigned long n, unsigned long seeds[])
+long computeSeeds(unsigned long n, unsigned long seeds[])
 {
     bool* isprime = new bool[n];
     memset(isprime, true, n); //TODO: PODE SER REDUZIDO
@@ -31,25 +31,25 @@ int computeSeeds(unsigned long n, unsigned long seeds[])
 	    }
     }
     
-    for (int i = 2 ; i < sqrt(n) ; i++)
+    for (unsigned long i = 2 ; i < sqrt(n) ; i++)
       if (isprime[i] == true) { seeds[number_seeds++] = i ; /*cout << i << " ";*/}
-    //cout << endl;
     return number_seeds ;
     
 }
 
-void computeChunk(bool primeList[], unsigned long seeds[], int number_seeds, int startIndex, int endIndex, int CHUNKSIZE)
+void computeChunk(bool primeList[], unsigned long seeds[], unsigned long number_seeds, unsigned long startIndex, unsigned long endIndex, unsigned long CHUNKSIZE)
 {
-	int maxLookupIndex = ceil(sqrt(endIndex)) + startIndex ;
+  cout << "step Indsx " << endIndex << endl;
+	unsigned long maxLookupIndex = ceil(sqrt(endIndex)) + startIndex ;
 	bool foundFirst ;
-	
-	for(int l = 0 ; l < number_seeds ; l++ )
+	cout << "step 19 " << maxLookupIndex << endl;
+	for(unsigned long l = 0 ; l < number_seeds ; l++ )
 	{
 		//cout << "a processar seed: " << seeds[l] << endl;
-		int temp_seed = seeds[l];
+		unsigned long temp_seed = seeds[l];
 		if (temp_seed  > maxLookupIndex ) break ; 
 		foundFirst = false;
-		for(int i = 0 ; i <= CHUNKSIZE; i++)
+		for(unsigned long i = 0 ; i <= CHUNKSIZE; i++)
 		{
 			if (foundFirst) break; 
 			if ((i + startIndex)  % temp_seed == 0) // encontrou um para marcar
@@ -57,7 +57,7 @@ void computeChunk(bool primeList[], unsigned long seeds[], int number_seeds, int
 				//cout << "a semenete : " << temp_seed << " marcou o numero" << i + startIndex<< endl;
 				primeList[i] = false;
 				foundFirst = true;
-				for(int j = i ; j <= endIndex - startIndex; j+= temp_seed)
+				for(unsigned long j = i ; j <= endIndex - startIndex; j+= temp_seed)
 				{
 					//cout << "---- a semenete : " << temp_seed << " marcou o numero" << j+startIndex << endl;
 					primeList[j] = false;
@@ -65,6 +65,7 @@ void computeChunk(bool primeList[], unsigned long seeds[], int number_seeds, int
 			}
 		}
 	}
+	cout << "step 20" << endl;
 }
 
 
@@ -77,11 +78,11 @@ int main(int argc, char **argv)
 	bool* primeList; 
 	unsigned long pCount = 0;
 	unsigned long* seeds;
-	int CHUNKSIZE = 0;
-	int r_CHUNKSIZE = 0 ;
+	unsigned long CHUNKSIZE = 0;
+	unsigned long r_CHUNKSIZE = 0 ;
 	int RANK = 0 ;
 	int NUM_THREADS = 4;
-	int number_seeds  = 0; 
+	unsigned long number_seeds  = 0; 
 	ofstream outputFile;
 	
 	MPI_Init( &argc, &argv );
@@ -94,8 +95,7 @@ int main(int argc, char **argv)
 	if (RANK == 0)
 	{
 		cout << "Threads: " << NUM_THREADS << endl;
-		int numberOfPrimes = 0 ;
-		int maxLookupSize ;
+		unsigned long numberOfPrimes = 0 ;
 		unsigned long n = 20;
 		MPI_Status status;
 	
@@ -103,22 +103,26 @@ int main(int argc, char **argv)
 		cin>>n;
 		
 		
+		cout << n << endl;
+		cout << "step 8" << endl;
 		primeList = new bool[n];
+		cout << "step 9" << endl;
 		memset(primeList, true, n); //TODO: REDUZIR
 		seeds = new unsigned long[(int)sqrt(n) + 5] ;
+		cout << "step 10" << endl;
 		CHUNKSIZE = ceil( ( (n - (int)sqrt(n) ) / (NUM_THREADS)) + 1 );
-		
+		cout << "step 11" << endl;
 		if (clock_gettime(USED_CLOCK, &begin)) exit(EXIT_FAILURE);
 		start = begin.tv_sec*NANOS + begin.tv_nsec;
 		
 		number_seeds = computeSeeds(n,seeds);
 		
 		//cout << "number_seeds: " << number_seeds << endl; 
-		 
+		 cout << "step 12" << endl;
 		//TODO: VERIFICAR SE INT AGUENTA
-		int* nextStartIndex = new int[NUM_THREADS + 1 ];
-		int* nextEndIndex = new int[NUM_THREADS + 1]; 
-		
+		unsigned long* nextStartIndex = new unsigned long[NUM_THREADS + 1 ];
+		unsigned long* nextEndIndex = new unsigned long[NUM_THREADS + 1]; 
+		cout << "step 13" << endl;
 		nextStartIndex[0]  = ceil(sqrt(n));
 		nextEndIndex[0] = nextStartIndex[0] + CHUNKSIZE ;
 		//cout << "i: 1" << " start : " << nextStartIndex[1] << " -  end: " << nextEndIndex[1] << endl;
@@ -128,15 +132,15 @@ int main(int argc, char **argv)
 			nextEndIndex[i] = nextStartIndex[i] + CHUNKSIZE ;
 			//cout << "i: " << i << " start : " << nextStartIndex[i] << " -  end: " << nextEndIndex[i] << endl;
 		}
-		
+		cout << "step 14" << endl;
 		if (nextEndIndex[NUM_THREADS-1] > n) nextEndIndex[NUM_THREADS-1] = n ;
 		
 		/*for(int i = 0;i < NUM_THREADS ; i++)
 		    cout << " start : " << nextStartIndex[i] << " -  end: " << nextEndIndex[i] << endl;*/
 		
+		//cout << "step 2" << endl;
 		
-		
-		
+		cout << "step 15" << endl;
 		
 		//TODO: PASSAR SEEDS PARA CALCULO SEQUENCIAL
 		//TODO: RESPOSTA SO de N
@@ -155,25 +159,28 @@ int main(int argc, char **argv)
 			// SEND seeds - ID: 2
 			//MPI_Send(seeds,number_seeds,MPI_UNSIGNED_LONG,i,2,MPI_COMM_WORLD);
 			// SEND startIndex - ID: 3
-			MPI_Send(&nextStartIndex[i],1,MPI_INT,i,3,MPI_COMM_WORLD);
+			MPI_Send(&nextStartIndex[i],1,MPI_UNSIGNED_LONG,i,3,MPI_COMM_WORLD);
 			// SEND endIndex - ID: 4
-			MPI_Send(&nextEndIndex[i],1,MPI_INT,i,4,MPI_COMM_WORLD);
+			MPI_Send(&nextEndIndex[i],1,MPI_UNSIGNED_LONG,i,4,MPI_COMM_WORLD);
 			// SEND endIndex - ID: 4
-			MPI_Send(&CHUNKSIZE,1,MPI_INT,i,5,MPI_COMM_WORLD);
+			MPI_Send(&CHUNKSIZE,1,MPI_UNSIGNED_LONG,i,5,MPI_COMM_WORLD);
 			
 		}
+		cout << "step 16" << endl;
 		//nextStartIndex[0]
-		
+		//cout << "step 3" << endl;
 		computeChunk(primeList,seeds,number_seeds,nextStartIndex[0],nextEndIndex[0],CHUNKSIZE);
-		
+		cout << "step 16.5" << endl;
+		//cout << "step 4" << endl;
 		//cout << "PROCESS 0 start: " << nextStartIndex[0] << "  end: " << nextEndIndex[0] << endl;
-		for(int k = 0 ; k <= CHUNKSIZE ; k++)
+		for(unsigned long k = 0 ; k <= CHUNKSIZE ; k++)
 		{
 		    if (primeList[k]){
 		      numberOfPrimes++;
 		      //cout <<  "PROCESSO: " <<  RANK << " PRIMO: " << k << endl ;
 		    }
 		}
+		cout << "step 17" << endl;
 		
 		//cout << "Numero de primos no 0: " << numberOfPrimes << endl;
 		//cout << "Numero de seeds : " << number_seeds << endl;
@@ -181,9 +188,9 @@ int main(int argc, char **argv)
 		
 		for(int i = 1 ; i < NUM_THREADS ; i++)
 		{
-			int tempNumber = 0 ;
+			unsigned long tempNumber = 0 ;
 			//int mainIndex = nextEndIndex[i] ; 
-			MPI_Recv(&tempNumber,1,MPI_INT,-1,6,MPI_COMM_WORLD, &status);
+			MPI_Recv(&tempNumber,1,MPI_UNSIGNED_LONG,-1,6,MPI_COMM_WORLD, &status);
 			numberOfPrimes += tempNumber ; 
 		}
 		
@@ -216,9 +223,8 @@ int main(int argc, char **argv)
 	{
 		//cout << "Here - RANK : " << RANK << endl ;
 		unsigned long n_size = 0  ; 
-		int retorno;
 		string temp = ""; 
-		int r_number_seeds, r_startIndex, r_endIndex;
+		unsigned long r_number_seeds, r_startIndex, r_endIndex;
 		
 		MPI_Status status; 
 		
@@ -228,12 +234,12 @@ int main(int argc, char **argv)
 		//unsigned long* r_seeds =  new unsigned long[r_number_seeds] ;
 		//MPI_Recv(r_seeds,r_number_seeds,MPI_UNSIGNED_LONG,0,2,MPI_COMM_WORLD, &status);
 		
-		MPI_Recv(&r_startIndex,1,MPI_INT,0,3,MPI_COMM_WORLD, &status);
+		MPI_Recv(&r_startIndex,1,MPI_UNSIGNED_LONG,0,3,MPI_COMM_WORLD, &status);
 		//cout << "RANK: " << RANK <<  "  r_startIndex: " << r_startIndex << endl;
-		MPI_Recv(&r_endIndex,1,MPI_INT,0,4,MPI_COMM_WORLD, &status);
+		MPI_Recv(&r_endIndex,1,MPI_UNSIGNED_LONG,0,4,MPI_COMM_WORLD, &status);
 		//cout << "RANK: " << RANK <<  "  r_startIndex: " << r_startIndex <<  "  r_endIndex: " << r_endIndex << endl;
 		
-		MPI_Recv(&r_CHUNKSIZE,1,MPI_INT,0,5,MPI_COMM_WORLD, &status);
+		MPI_Recv(&r_CHUNKSIZE,1,MPI_UNSIGNED_LONG,0,5,MPI_COMM_WORLD, &status);
 		//cout << " ----> r_CHUNKSIZE: " << r_CHUNKSIZE << endl;
 		
 		//cout << "r_seeds" << endl; 
@@ -254,8 +260,8 @@ int main(int argc, char **argv)
 		//cout <<  "PROCESSO: " <<  RANK <<  " - Finish compute chunk !" <<  endl;
 		computeChunk(primeList,seeds,r_number_seeds,r_startIndex,r_endIndex,r_CHUNKSIZE);
 		string toPrint = ""; 
-		int count = 0 ; 
-		for(int k = 0 ; k < r_CHUNKSIZE ; k++)
+		unsigned long count = 0 ; 
+		for(unsigned long k = 0 ; k < r_CHUNKSIZE ; k++)
 		{
 		    if(k + r_startIndex > r_endIndex) break;
 		    if (primeList[k])
@@ -266,7 +272,7 @@ int main(int argc, char **argv)
 		     
 		}
 		// SEND SOLUTION - ID: 6
-		MPI_Send(&count,1,MPI_INT,0,6,MPI_COMM_WORLD);
+		MPI_Send(&count,1,MPI_UNSIGNED_LONG,0,6,MPI_COMM_WORLD);
 		//cout <<  "PROCESSO: " <<  RANK <<  " - Finish SEND !" << endl;
 	
 	}
