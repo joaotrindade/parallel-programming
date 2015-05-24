@@ -5,6 +5,7 @@
 #include <string.h>
 #include <time.h>
 #include <omp.h>
+#include <fstream>
 #include "mpi.h"
 
 #define USED_CLOCK CLOCK_MONOTONIC // CLOCK_MONOTONIC_RAW if available
@@ -53,7 +54,7 @@ void computeChunk(bool primeList[], int seeds[], int number_seeds, unsigned long
 			{
 				primeList[i] = false;
 				foundFirst = true;
-				for(unsigned long j = i ; j <= endIndex - startIndex; j+= temp_seed)
+				for(unsigned long j = i ; j <= endIndex - startIndex ; j+= temp_seed)
 				{
 					primeList[j] = false;
 				}
@@ -77,12 +78,16 @@ int main(int argc, char **argv)
 	int NUM_THREADS = 4;
 	int number_seeds  = 0; 
 	
+	//
+	
+	//
+	
 	MPI_Init( &argc, &argv );
 	MPI_Comm_size( MPI_COMM_WORLD, &NUM_THREADS );
 	MPI_Comm_rank( MPI_COMM_WORLD, &RANK );
 
 	if (RANK == 0)
-	{
+	{	
 		cout << "Threads: " << NUM_THREADS << endl;
 		int numberOfPrimes = 0 ;
 		unsigned long n = 0, n2;
@@ -111,16 +116,13 @@ int main(int argc, char **argv)
 
 		nextStartIndex[0]  = ceil(sqrt(n));
 		nextEndIndex[0] = nextStartIndex[0] + CHUNKSIZE ;
-		//cout << "i: 1" << " start : " << nextStartIndex[1] << " -  end: " << nextEndIndex[1] << endl;
 		for(int i = 1; i<NUM_THREADS ; i++)
 		{
 			nextStartIndex[i] = nextEndIndex[i - 1] + 1;
 			nextEndIndex[i] = nextStartIndex[i] + CHUNKSIZE ;
-			//cout << "i: " << i << " start : " << nextStartIndex[i] << " -  end: " << nextEndIndex[i] << endl;
 		}
 		
 		if (nextEndIndex[NUM_THREADS-1] > n) nextEndIndex[NUM_THREADS-1] = n ;
-		
 		for(int i = 1; i < NUM_THREADS ; i++)
 		{
 			// DISTRIBUI TAREFAS void computeChunk(unsigned long seeds[], int number_seeds, int startIndex, int endIndex, int CHUNKSIZE)
@@ -136,13 +138,17 @@ int main(int argc, char **argv)
 		}
 
 		computeChunk(primeList,seeds,number_seeds,nextStartIndex[0],nextEndIndex[0],CHUNKSIZE);
-
+		
+		if (clock_gettime(USED_CLOCK, &current)) exit(EXIT_FAILURE);
+		elapsed = current.tv_sec*NANOS + current.tv_nsec - start;
+		microseconds = elapsed / 1000 + (elapsed % 1000 >= 500);
+		
 		for(int k = 0 ; k <= CHUNKSIZE ; k++)
 		{
 		    if (primeList[k]){
 		      numberOfPrimes++;
-		      //cout <<  "PROCESSO: " <<  RANK << " PRIMO: " << k << endl ;
 		    }
+		    
 		}
 		
 		numberOfPrimes += number_seeds ; 
@@ -157,9 +163,7 @@ int main(int argc, char **argv)
 		
 		// ESPERA TODA A GENTE
 		
-		if (clock_gettime(USED_CLOCK, &current)) exit(EXIT_FAILURE);
-		elapsed = current.tv_sec*NANOS + current.tv_nsec - start;
-		microseconds = elapsed / 1000 + (elapsed % 1000 >= 500);
+		
 		cout << "Primes found: " << numberOfPrimes << endl;
 		cout << "Elapsed time: " << microseconds << " microseconds (" << microseconds * 0.000001 << " s). " << endl;
 				
@@ -188,12 +192,12 @@ int main(int argc, char **argv)
 		seeds = new int[(int)sqrt(n_size) + 5] ;
 		r_number_seeds = computeSeeds(n_size,seeds);
 
-		primeList = new bool[r_CHUNKSIZE];
-		memset(primeList, true, r_CHUNKSIZE);
+		primeList = new bool[r_CHUNKSIZE + 5];
+		memset(primeList, true, r_CHUNKSIZE + 5);
 
 		computeChunk(primeList,seeds,r_number_seeds,r_startIndex,r_endIndex,r_CHUNKSIZE);
 		unsigned long count = 0 ; 
-		for(int k = 0 ; k < r_CHUNKSIZE ; k++)
+		for(int k = 0 ; k <= r_CHUNKSIZE ; k++)
 		{
 		    if(k + r_startIndex > r_endIndex) break;
 		    if (primeList[k])
